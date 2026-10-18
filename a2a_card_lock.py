@@ -112,7 +112,14 @@ def diff(card, lock):
     for key in ("url", "preferredTransport", "security", "securitySchemes", "provider"):
         old = (lock.get("fields") or {}).get(key)
         new = live["fields"].get(key)
-        if old and new and old != new:
+        if old == new:
+            continue
+        if old and not new:
+            # Dropping auth is the worst case: the card just became anonymous.
+            findings.append((BREAKING, f"{key} removed (was pinned, now absent)"))
+        elif new and not old:
+            findings.append((BREAKING, f"{key} added (not covered by the lock)"))
+        else:
             findings.append((BREAKING, f"{key} changed (was pinned, now differs)"))
 
     # skills

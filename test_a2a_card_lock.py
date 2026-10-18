@@ -119,5 +119,23 @@ class TestLockfileRoundtrip(unittest.TestCase):
         self.assertEqual(cl.load_lock(p), lock)
 
 
+class SecurityRemovalTest(unittest.TestCase):
+    """Dropping auth from a pinned card must be BREAKING, not silent."""
+
+    def test_security_block_removed_is_critical(self):
+        pinned = card(security=[{"bearer": []}],
+                      securitySchemes={"bearer": {"type": "http", "scheme": "bearer"}})
+        lock = cl.pin(pinned)
+
+        stripped = dict(pinned)
+        stripped.pop("security", None)
+        stripped.pop("securitySchemes", None)
+
+        findings, _summary = cl.diff(stripped, lock)
+        messages = " ".join(m for _, m in findings)
+        self.assertIn("security removed", messages)
+        self.assertTrue(all(sev == cl.BREAKING for sev, _ in findings))
+
+
 if __name__ == "__main__":
     unittest.main()
